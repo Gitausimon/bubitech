@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Card, Typography, TextField, Button, Alert, Container } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Avatar from '@mui/material/Avatar';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 
-function Login({ setToken }) {
+function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,25 +19,17 @@ function Login({ setToken }) {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('bubiToken', data.token);
-        localStorage.setItem('bubiUser', JSON.stringify(data));
-        setToken(data.token);
-        navigate('/admin');
-      } else {
-        setError(data.message || 'Login failed');
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem('bubiToken', token);
+      navigate('/admin');
     } catch (err) {
-      setError('Connection error');
+      console.error(err);
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password');
+      } else {
+        setError('Login failed: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
